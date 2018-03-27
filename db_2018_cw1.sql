@@ -29,13 +29,29 @@ ORDER BY name ASC
 
 
 -- Q3 returns (name)
-SELECT monarch.name
-FROM monarch
-JOIN person
-on person.name = monarch.name
-WHERE monarch.coronation < person.dod
-ORDER BY name ASC
-;
+SELECT name
+FROM person
+WHERE name = ANY
+(
+  SELECT name
+  FROM monarch
+  WHERE house IS NOT NULL
+)
+AND dod > ALL
+(
+  SELECT accession
+  FROM monarch
+  WHERE accession > ANY
+  (SELECT accession
+  FROM monarch
+   WHERE name = person.name
+  )
+  ORDER BY accession LIMIT 1
+)
+AND dod IS NOT NULL
+ORDER BY name ASC;
+
+
 
 -- Q4 returns (house,name,accession)
 SELECT monarcha.name, monarcha.house, monarcha.accession
@@ -111,18 +127,18 @@ WHERE father IS NOT NULL) AS father1
 -- Q8 returns (monarch,prime_minister)
 SELECT house.name AS monarch, p.name AS prime_minister
 FROM prime_minister AS p,
-(SELECT s1.name AS name, s1.coronation AS start, s2.coronation AS end1
+(SELECT s1.name AS name, s1.accession AS start, s2.accession AS end1
 FROM
-(SELECT ROW_NUMBER() OVER(PARTITION BY house ORDER BY coronation ASC) AS rownumber,
-   name, house, coronation
+(SELECT ROW_NUMBER() OVER(PARTITION BY house ORDER BY accession ASC) AS rownumber,
+   name, house, accession
 FROM monarch
-WHERE coronation IS NOT NULL) AS s1
+WHERE accession IS NOT NULL) AS s1
 JOIN
 (
-SELECT ROW_NUMBER() OVER(PARTITION BY house ORDER BY coronation ASC) AS rownumber,
-   name, house, coronation
+SELECT ROW_NUMBER() OVER(PARTITION BY house ORDER BY accession ASC) AS rownumber,
+   name, house, accession
 FROM monarch
-WHERE coronation IS NOT NULL) AS s2
+WHERE accession IS NOT NULL) AS s2
 ON s1.rownumber + 1 = s2.rownumber
 AND s1.house = s2.house
 ) AS house
